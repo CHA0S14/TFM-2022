@@ -31,3 +31,5 @@ build/
 
 ### VS Code ###
 .vscode/
+/notebooks/.ipynb_checkpoints/
+/notebooks/Data/
