@@ -16,7 +16,6 @@ public class FCAService {
     }
 
     public void saveLattice(Lattice lattice) {
-
-        repository.saveAllNodes(lattice.getLattice());
+        repository.saveAllNodes(lattice.getLattice(), lattice.getObjetos(), lattice.getAtributos());
     }
 }

@@ -13,8 +13,13 @@ import org.springframework.data.neo4j.core.schema.Node;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@RequiredArgsConstructor
 public class FCAObject {
     @Id
     @NotNull
     private String name;
+
+
+    @Version
+    private Long version;
 }

@@ -6,7 +6,5 @@ import com.jbraindead.core.formalEntities.Lattice;
 import java.util.List;
 
 public interface FCARepository {
-    void saveNode(Lattice lattice, FormalConcept fc);
-
-    void saveAllNodes(List<FormalConcept> lattice);
+    void saveAllNodes(List<FormalConcept> lattice, String[] objects, String[] attributes);
 }

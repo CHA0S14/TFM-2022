@@ -1,9 +1,10 @@
 package com.uned.tfm.tfm2022.infra.entity;
 
 import com.jbraindead.core.formalEntities.ComplexEntity;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
+import com.sun.istack.internal.NotNull;
+import lombok.*;
 import org.springframework.data.annotation.Version;
+import org.springframework.data.neo4j.core.schema.GeneratedValue;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Relationship;
@@ -11,44 +12,31 @@ import org.springframework.data.neo4j.core.schema.Relationship;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Node("FormalConcept")
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class FormalConceptDto {
     @Id
     private Integer id = -1;
 
     @Relationship(type = "EXTENSION", direction = Relationship.Direction.OUTGOING)
-    private List<FCAObject> extension;
+    private List<FCAObject> extensionDto;
 
     @Relationship(type = "INTENSION", direction = Relationship.Direction.OUTGOING)
-    private List<FCAAttribute> intension;
+    private List<FCAAttribute> intensionDto;
 
-    @Relationship(type = "PARENT", direction = Relationship.Direction.INCOMING)
-    private ArrayList<FormalConceptDto> parents = new ArrayList<>();
+    @Relationship(type = "PARENT", direction = Relationship.Direction.OUTGOING)
+    private List<FormalConceptDto> childrenDto;
+
+    @Version
+    private Long version;
 
     private BigDecimal intensionalStability;
     private BigDecimal subSets = new BigDecimal(0);
     private BigDecimal originalSubSets = new BigDecimal(0);
-
-
-    public void setExtension(ComplexEntity extension, String[] objectList) {
-        this.extension = conplexToStringArray(objectList, extension).stream()
-                .map(FCAObject::new)
-                .collect(Collectors.toList());
-    }
-
-    public void setIntension(ComplexEntity intension, String[] objectList) {
-        this.intension = conplexToStringArray(objectList, intension).stream()
-                .map(FCAAttribute::new)
-                .collect(Collectors.toList());
-    }
-
-
-    private List<String> conplexToStringArray(String[] elems, ComplexEntity extension) {
-        return extension.getElements().stream()
-                .map(elem -> elems[elem.getId()])
-                .collect(Collectors.toList());
-    }
 }
