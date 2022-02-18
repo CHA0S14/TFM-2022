@@ -53,7 +53,7 @@ public class LatticeRepositoryNeo4jAdapter implements com.uned.tfm.tfm2022.domai
     }
 
     private void saveUnsavedNode(FormalConcept unsavedNode, String[] objects, String[] attributes) {
-        List<FormalConceptDto> parents = unsavedNode.getParents().stream().map(parent -> {
+        List<FormalConceptDto> parents = unsavedNode.getParents().stream().parallel().map(parent -> {
             Optional<FormalConceptDto> parentDtoOptional = fcaRepository.findById(parent.getId());
 
             FormalConceptDto parentDto = null;
@@ -61,9 +61,9 @@ public class LatticeRepositoryNeo4jAdapter implements com.uned.tfm.tfm2022.domai
             if (parentDtoOptional.isPresent()) {
                 parentDto = parentDtoOptional.get();
 
+                FormalConceptDto dto = mapper.map(unsavedNode, FormalConceptDto.class);
 
-                FormalConceptDto rootDto = mapper.map(unsavedNode, FormalConceptDto.class);
-                rootDto.setChildrenDto(processChildren(unsavedNode, objects, attributes));
+                FormalConceptDto rootDto = addExtensionAndIntension(dto, unsavedNode, objects, attributes);
 
                 parentDto.getChildrenDto().add(rootDto);
             }
@@ -77,7 +77,7 @@ public class LatticeRepositoryNeo4jAdapter implements com.uned.tfm.tfm2022.domai
 
     private List<FormalConcept> checkIfAllAreSaved(List<FormalConcept> formalConcepts) {
         return formalConcepts.stream().parallel()
-                .filter(fca -> !fcaRepository.findById(fca.getId()).isPresent())
+                .filter(fca -> !fcaRepository.existsById(fca.getId()))
                 .collect(Collectors.toList());
     }
 
@@ -103,6 +103,15 @@ public class LatticeRepositoryNeo4jAdapter implements com.uned.tfm.tfm2022.domai
         List<FormalConceptDto> children = processChildren(fca, objects, attributes);
 
         dto.setChildrenDto(children);
+
+        addExtensionAndIntension(dto, fca, objects, attributes);
+
+        return dto;
+    }
+
+
+
+    private FormalConceptDto addExtensionAndIntension(FormalConceptDto dto, FormalConcept fca, String[] objects, String[] attributes) {
 
         dto.setExtensionDto(processExtension(fca.getExtension(), objects));
 
