@@ -12,4 +12,6 @@ public interface CSVMatrixFCARepository {
     String[] getObjects(String path) throws IOException;
 
     CRSMatrix getMatrix(String path, int objectLen, int attributesLen) throws IOException;
+
+    CRSMatrix getMatrixByIdArray(String path, int objectLen, int attributesLen) throws IOException;
 }

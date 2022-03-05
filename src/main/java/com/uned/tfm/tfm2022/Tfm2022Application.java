@@ -27,7 +27,8 @@ public class Tfm2022Application implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        String uid = "00RL8Z82B2Z1";
+        //String uid = "00RL8Z82B2Z1";
+        String uid = "user_lattice";
 
 
         String attrPath = "./ProcessedData/metadata/" + uid + "/" + uid + "-attributes.csv";
@@ -36,7 +37,7 @@ public class Tfm2022Application implements CommandLineRunner {
 
         String[] attributes = csvFcaReader.getAttributes(attrPath);
         String[] objects = csvFcaReader.getObjects(objPath);
-        CRSMatrix relations = csvFcaReader.getMatrix(relationsPath, objects.length, attributes.length);
+        CRSMatrix relations = csvFcaReader.getMatrixByIdArray(relationsPath, objects.length, attributes.length);
 
         ContextGenerator generator = new ContextGenerator(objects, attributes, relations);
 

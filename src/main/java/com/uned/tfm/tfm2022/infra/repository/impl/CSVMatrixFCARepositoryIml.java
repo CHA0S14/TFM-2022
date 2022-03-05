@@ -4,6 +4,7 @@ import com.uned.tfm.tfm2022.infra.repository.CSVMatrixFCARepository;
 import lombok.extern.log4j.Log4j2;
 import org.la4j.Vector;
 import org.la4j.matrix.sparse.CRSMatrix;
+import org.la4j.vector.sparse.CompressedVector;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -35,15 +36,8 @@ public class CSVMatrixFCARepositoryIml implements CSVMatrixFCARepository {
 
     @Override
     public CRSMatrix getMatrix(String path, int objectLen, int attributesLen) throws IOException {
-        Path filePath = Paths.get(path);
-
-        if (!Files.exists(filePath)) {
-            log.error("The file {} doesn't exists", path);
-            throw new IOException("The file " + path + " doesn't exists");
-        }
-
+        Path filePath = prepareFile(path);
         List<Vector> rows;
-
         log.info("Reading matrix file");
 
         try (Stream<String> stream = Files.lines(filePath, StandardCharsets.UTF_8)) {
@@ -64,6 +58,56 @@ public class CSVMatrixFCARepositoryIml implements CSVMatrixFCARepository {
             throw e;
         }
 
+        return rowsToMatrix(path, objectLen, attributesLen, rows);
+    }
+
+    @Override
+    public CRSMatrix getMatrixByIdArray(String path, int objectLen, int attributesLen) throws IOException {
+        Path filePath = prepareFile(path);
+        List<Vector> rows;
+        log.info("Reading matrix file");
+
+        try (Stream<String> stream = Files.lines(filePath, StandardCharsets.UTF_8)) {
+
+            rows = stream
+                    .map(line -> {
+
+                        line = line.trim();
+
+                        List<String> lineElements = Arrays.asList(line.split(","));
+
+                        Vector row = new CompressedVector(attributesLen);
+
+                        lineElements.forEach(element -> {
+                            if (element.isEmpty())
+                                return;
+
+                            int index = Integer.parseInt(element);
+                            row.set(index, 1);
+                        });
+
+                        return row;
+                    })
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            throw e;
+        }
+
+        return rowsToMatrix(path, objectLen, attributesLen, rows);
+    }
+
+    private Path prepareFile(String path) throws IOException {
+        Path filePath = Paths.get(path);
+
+        if (!Files.exists(filePath)) {
+            log.error("The file {} doesn't exists", path);
+            throw new IOException("The file " + path + " doesn't exists");
+        }
+
+        return filePath;
+    }
+
+    private CRSMatrix rowsToMatrix(String path, int objectLen, int attributesLen, List<Vector> rows) {
         log.info("Created matrix with {} rows and {} columns", objectLen, attributesLen);
 
         CRSMatrix relations = CRSMatrix.zero(objectLen, attributesLen);
