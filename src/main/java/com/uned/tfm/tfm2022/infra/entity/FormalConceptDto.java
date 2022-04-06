@@ -33,8 +33,6 @@ public class FormalConceptDto {
     @Relationship(type = "PARENT", direction = Relationship.Direction.OUTGOING)
     private List<FormalConceptDto> childrenDto;
 
-    @Version
-    private Long version;
 
     private BigDecimal intensionalStability;
     private BigDecimal subSets = new BigDecimal(0);

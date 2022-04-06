@@ -35,3 +35,15 @@ class Object(StructuredNode):
 
     name = StringProperty(unique_index=True, required=True)
     formal_concepts = RelationshipFrom('FormalConcept', 'EXTENSION')
+
+
+def create_database(dbName, databaseConexion):
+    create_db_query = f'CREATE DATABASE {dbName} IF NOT EXISTS'
+
+    databaseConexion.cypher_query(create_db_query)
+
+
+def drop_database(dbName, databaseConexion):
+    drop_db_query = f'DROP DATABASE {dbName} IF EXISTS'
+
+    databaseConexion.cypher_query(drop_db_query)

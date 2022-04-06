@@ -8,6 +8,7 @@ import com.uned.tfm.tfm2022.infra.entity.FormalConceptDto;
 import com.uned.tfm.tfm2022.infra.repository.FCARepository;
 import lombok.extern.log4j.Log4j2;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.neo4j.core.DatabaseSelectionProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -27,17 +28,12 @@ public class LatticeRepositoryNeo4jAdapter implements com.uned.tfm.tfm2022.domai
 
     @Override
     public void saveAllNodes(List<FormalConcept> formalConcepts, String[] objects, String[] attributes) {
-        FormalConcept root = searchForRoot(formalConcepts);
 
-        FormalConceptDto rootDto = mapper.map(root, FormalConceptDto.class);
+        List<FormalConcept> leafs = searchForLeafs(formalConcepts);
 
-        log.info("Processing children");
+        log.info("Searching and saving bottom to up");
 
-        rootDto.setChildrenDto(processChildren(root, objects, attributes));
-
-        log.info("Saving");
-
-        fcaRepository.save(rootDto);
+        saveLastLevel(leafs, Collections.emptyList(), objects, attributes);
 
         List<FormalConcept> unsaved;
 
@@ -47,9 +43,41 @@ public class LatticeRepositoryNeo4jAdapter implements com.uned.tfm.tfm2022.domai
             log.info("Retry saving unsaved nodes");
 
             unsaved.forEach(node -> saveUnsavedNode(node, objects, attributes));
-        }while (!unsaved.isEmpty());
+        } while (!unsaved.isEmpty());
 
         log.info("Everything saved");
+    }
+
+    private void searchParents(List<FormalConcept> leafs, List<FormalConceptDto> savedLeafs, String[] objects, String[] attributes) {
+        Set<FormalConcept> parents = leafs.stream().parallel()
+                .flatMap(leaf -> leaf.getParents().stream())
+                .collect(Collectors.toSet());
+
+        if(parents.isEmpty())
+            return;
+
+        saveLastLevel(new ArrayList<>(parents), savedLeafs, objects, attributes);
+
+    }
+
+    private void saveLastLevel(List<FormalConcept> leafs, List<FormalConceptDto> savedLeafs, String[] objects, String[] attributes) {
+        List<FormalConceptDto> leafToSave = leafs.stream().parallel()
+                .map(leaf -> transformFcaToDto(leaf, savedLeafs, objects, attributes))
+                .collect(Collectors.toList());
+
+        List<FormalConceptDto> thisSavedLeafs = fcaRepository.saveAll(leafToSave);
+
+        searchParents(leafs, thisSavedLeafs, objects, attributes);
+    }
+
+
+    private List<FormalConcept> searchForLeafs(List<FormalConcept> formalConcepts) {
+
+        log.info("Get all nodes without children");
+
+        return formalConcepts.stream().parallel()
+                .filter(fca -> fca.getChildren().size() == 0)
+                .collect(Collectors.toList());
     }
 
     private void saveUnsavedNode(FormalConcept unsavedNode, String[] objects, String[] attributes) {
@@ -81,26 +109,20 @@ public class LatticeRepositoryNeo4jAdapter implements com.uned.tfm.tfm2022.domai
                 .collect(Collectors.toList());
     }
 
-
-    private FormalConcept searchForRoot(List<FormalConcept> formalConcepts) {
-
-        log.info("Get all nodes without parents");
-
-        return formalConcepts.stream().parallel()
-                .filter(fca -> fca.getParents().size() == 0)
-                .findFirst().orElse(null);
-
-    }
-
-    private List<FormalConceptDto> processChildren(FormalConcept parent, String[] objects, String[] attributes) {
-
-        return parent.getChildren().stream().map(child -> transformFcaToDto(child, objects, attributes)).collect(Collectors.toList());
-    }
-
-    private FormalConceptDto transformFcaToDto(FormalConcept fca, String[] objects, String[] attributes) {
+    private FormalConceptDto transformFcaToDto(FormalConcept fca, List<FormalConceptDto> savedLeafs, String[] objects, String[] attributes) {
         FormalConceptDto dto = mapper.map(fca, FormalConceptDto.class);
 
-        List<FormalConceptDto> children = processChildren(fca, objects, attributes);
+        List<FormalConceptDto> children = fca.getChildren().stream()
+                .map(child -> {
+                    Optional<FormalConceptDto> childDto = savedLeafs.stream().parallel()
+                            .filter(savedLeaf -> savedLeaf.getId().equals(child.getId()))
+                            .findFirst();
+
+                    return childDto.orElseGet(() -> fcaRepository.findById(child.getId()).orElse(null));
+
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
 
         dto.setChildrenDto(children);
 
@@ -108,7 +130,6 @@ public class LatticeRepositoryNeo4jAdapter implements com.uned.tfm.tfm2022.domai
 
         return dto;
     }
-
 
 
     private FormalConceptDto addExtensionAndIntension(FormalConceptDto dto, FormalConcept fca, String[] objects, String[] attributes) {
